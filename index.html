@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Offline-first currency converter with manual rate override">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💱</text></svg>">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon.svg">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Exchange">
+    <meta name="theme-color" content="#f4f5fb" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0d0e14" media="(prefers-color-scheme: dark)">
+    <title>Exchange</title>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            color-scheme: light dark;
+            --bg: #f4f5fb;
+            --bg-grad: radial-gradient(1200px 600px at 50% -10%, #e9ecff 0%, #f4f5fb 60%);
+            --card: rgba(255,255,255,0.85);
+            --card-solid: #ffffff;
+            --ink: #14151a;
+            --muted: #71727f;
+            --line: #e7e8f0;
+            --field: #f3f4fa;
+            --warn: #d98216;
+            --warn-soft: rgba(217,130,22,0.14);
+            --manual: #7c5cf0;
+            --manual-soft: rgba(124,92,240,0.14);
+            --off: #f0445a;
+            --accent: #6366f1;
+            --accent-ink: #ffffff;
+            --shadow: 0 10px 30px -12px rgba(40,42,80,0.22);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0d0e14;
+                --bg-grad: radial-gradient(1200px 600px at 50% -10%, #1b1d31 0%, #0d0e14 60%);
+                --card: rgba(26,27,38,0.72);
+                --card-solid: #1a1b26;
+                --ink: #f1f2f7;
+                --muted: #9a9bac;
+                --line: #2a2c3c;
+                --field: #20212e;
+                --warn: #f0a437;
+                --warn-soft: rgba(240,164,55,0.16);
+                --manual: #a58cff;
+                --manual-soft: rgba(165,140,255,0.18);
+                --off: #ff5f72;
+                --accent: #818cf8;
+                --accent-ink: #0d0e14;
+                --shadow: 0 14px 40px -14px rgba(0,0,0,0.7);
+            }
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-grad), var(--bg);
+            background-attachment: fixed;
+            color: var(--ink);
+            line-height: 1.5;
+            padding: 32px 16px 64px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .wrap { max-width: 440px; margin: 0 auto; }
+
+        header {
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            margin-bottom: 22px;
+        }
+        h1 {
+            font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em;
+            display: inline-flex; align-items: center; gap: 8px;
+        }
+
+        .card {
+            background: var(--card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--line);
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            padding: 18px;
+        }
+
+        .row { display: flex; gap: 10px; align-items: stretch; }
+
+        input#amount, output#result {
+            flex: 1 1 auto; min-width: 0;
+            background: var(--field);
+            border: 1px solid transparent;
+            border-radius: 14px;
+            padding: 14px 16px;
+            font: inherit;
+            font-size: 1.6rem;
+            font-weight: 650;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.02em;
+            color: var(--ink);
+            text-align: right;
+        }
+        input#amount:focus { outline: none; border-color: var(--accent); background: var(--card-solid); }
+        output#result {
+            display: block;
+            background: transparent;
+            cursor: pointer;
+            -webkit-user-select: all; user-select: all;
+        }
+        output#result.empty { color: var(--muted); font-weight: 500; }
+
+        select {
+            flex: 0 0 132px;
+            background: var(--field);
+            border: 1px solid transparent;
+            border-radius: 14px;
+            padding: 0 10px;
+            font: inherit; font-size: 1rem; font-weight: 600;
+            color: var(--ink);
+            -webkit-appearance: none; appearance: none;
+            text-align: center;
+            cursor: pointer;
+        }
+        select:focus { outline: none; border-color: var(--accent); }
+
+        .swapwrap { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+        .swapwrap hr { flex: 1; border: none; border-top: 1px solid var(--line); }
+        button.icon {
+            background: var(--field); color: var(--ink);
+            border: 1px solid var(--line); border-radius: 999px;
+            width: 38px; height: 38px; flex: 0 0 38px;
+            font-size: 1.05rem; cursor: pointer;
+            display: grid; place-items: center;
+            transition: transform .15s ease;
+        }
+        button.icon:active { transform: scale(0.92); }
+        button.icon:disabled { opacity: 0.5; }
+
+        .meta {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 10px; margin-top: 16px; flex-wrap: wrap;
+        }
+        .rateline { font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+        .rateline .dim { color: var(--muted); }
+        .badges { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+
+        .badge {
+            font-size: 0.75rem; font-weight: 600;
+            padding: 3px 9px; border-radius: 999px;
+            background: var(--field); color: var(--muted);
+            white-space: nowrap;
+        }
+        .badge.manual { background: var(--manual-soft); color: var(--manual); }
+        .badge.stale  { background: var(--warn-soft); color: var(--warn); }
+        .badge.none   { background: var(--warn-soft); color: var(--warn); }
+
+        .pill {
+            font-size: 0.72rem; font-weight: 700; letter-spacing: 0.03em;
+            text-transform: uppercase;
+            padding: 3px 9px; border-radius: 999px;
+            background: rgba(240,68,90,0.14); color: var(--off);
+        }
+
+        details { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
+        summary {
+            cursor: pointer; font-size: 0.9rem; color: var(--muted);
+            font-weight: 600; list-style: none;
+        }
+        summary::-webkit-details-marker { display: none; }
+        summary::before { content: '\25B8  '; }
+        details[open] summary::before { content: '\25BE  '; }
+        .manualbox { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+        .manualbox input {
+            flex: 1 1 120px; min-width: 0;
+            background: var(--field); border: 1px solid transparent; border-radius: 12px;
+            padding: 10px 12px; font: inherit; font-variant-numeric: tabular-nums; color: var(--ink);
+        }
+        .manualbox input:focus { outline: none; border-color: var(--accent); }
+        button.text {
+            background: var(--accent); color: var(--accent-ink);
+            border: none; border-radius: 12px; padding: 10px 14px;
+            font: inherit; font-weight: 650; cursor: pointer;
+        }
+        button.text.ghost { background: var(--field); color: var(--muted); }
+        .hint { font-size: 0.8rem; color: var(--muted); margin-top: 10px; }
+
+        .banner {
+            position: fixed; left: 16px; right: 16px; bottom: 16px;
+            max-width: 408px; margin: 0 auto;
+            background: var(--card-solid); border: 1px solid var(--line);
+            border-radius: 14px; box-shadow: var(--shadow);
+            padding: 12px 14px;
+            display: flex; align-items: center; gap: 12px;
+            font-size: 0.9rem;
+        }
+        .banner button { margin-left: auto; }
+        .hidden { display: none !important; }
+        footer { text-align: center; color: var(--muted); font-size: 0.78rem; margin-top: 18px; }
+        footer a { color: inherit; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <header>
+            <h1>💱 Exchange</h1>
+            <span id="net" class="pill hidden">offline</span>
+        </header>
+
+        <main class="card">
+            <div class="row">
+                <input id="amount" type="text" inputmode="decimal" autocomplete="off"
+                       spellcheck="false" aria-label="Amount" placeholder="0">
+                <select id="from" aria-label="Convert from"></select>
+            </div>
+
+            <div class="swapwrap">
+                <hr>
+                <button id="swap" class="icon" type="button" title="Swap currencies" aria-label="Swap currencies">&#8645;</button>
+                <hr>
+            </div>
+
+            <div class="row">
+                <output id="result" class="empty" title="Tap to copy">&mdash;</output>
+                <select id="to" aria-label="Convert to"></select>
+            </div>
+
+            <div class="meta">
+                <div id="rateline" class="rateline"></div>
+                <div class="badges">
+                    <span id="badge" class="badge"></span>
+                    <button id="refresh" class="icon" type="button" title="Refresh rates" aria-label="Refresh rates">&#8635;</button>
+                </div>
+            </div>
+
+            <details id="manual">
+                <summary>Set rate manually</summary>
+                <div class="manualbox">
+                    <input id="manual-rate" type="text" inputmode="decimal" autocomplete="off"
+                           spellcheck="false" aria-label="Manual rate">
+                    <button id="manual-save" class="text" type="button">Save</button>
+                    <button id="manual-clear" class="text ghost hidden" type="button">Clear</button>
+                </div>
+                <p id="manual-hint" class="hint"></p>
+            </details>
+        </main>
+
+        <footer>
+            Rates from <a href="https://frankfurter.dev" target="_blank" rel="noopener">Frankfurter</a>
+            &middot; works offline
+        </footer>
+    </div>
+
+    <div id="update" class="banner hidden">
+        <span>New version available.</span>
+        <button id="reload" class="text" type="button">Reload</button>
+    </div>
+
+    <script>
+        const API = 'https://api.frankfurter.dev/v2';
+        const BASE = 'EUR';                  // one base covers every pair by cross-rate
+        const STALE_DAYS = 7;
+        const K = { rates: 'xch:rates', currencies: 'xch:currencies', ui: 'xch:ui', overrides: 'xch:overrides' };
+
+        // ===== Storage: API bodies are stored verbatim, exactly as received =====
+        const read = (k, fb) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fb; } catch { return fb; } };
+        const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+
+        // enough to render the pickers on a cold first launch with no network
+        const FALLBACK_CURRENCIES = [
+            { iso_code: 'EUR', name: 'Euro', symbol: '€' },
+            { iso_code: 'USD', name: 'US Dollar', symbol: '$' },
+            { iso_code: 'DKK', name: 'Danish Krone', symbol: 'kr.' },
+            { iso_code: 'GBP', name: 'British Pound', symbol: '£' },
+            { iso_code: 'CHF', name: 'Swiss Franc', symbol: 'CHF' },
+            { iso_code: 'SEK', name: 'Swedish Krona', symbol: 'kr' },
+            { iso_code: 'NOK', name: 'Norwegian Krone', symbol: 'kr' },
+            { iso_code: 'JPY', name: 'Japanese Yen', symbol: '¥' },
+            { iso_code: 'THB', name: 'Thai Baht', symbol: '฿' },
+            { iso_code: 'MUR', name: 'Mauritian Rupee', symbol: '₨' },
+            { iso_code: 'PLN', name: 'Polish Zloty', symbol: 'zł' },
+            { iso_code: 'CAD', name: 'Canadian Dollar', symbol: '$' },
+            { iso_code: 'AUD', name: 'Australian Dollar', symbol: '$' },
+            { iso_code: 'TRY', name: 'Turkish Lira', symbol: '₺' },
+        ];
+
+        // ===== State =====
+        let rates = read(K.rates, null);             // /v2/rates array, verbatim
+        let currencies = read(K.currencies, null);   // /v2/currencies array, verbatim
+        let ui = Object.assign({ from: 'EUR', to: 'DKK', amount: '100', recent: [] }, read(K.ui, {}));
+        let overrides = read(K.overrides, {});
+        let fresh = false;                           // reached the network this session — not persisted
+
+        // index on read; whole rows are kept so each currency's own `date` survives
+        let byQuote = {};
+        const reindex = () => { byQuote = Object.fromEntries((rates || []).map((r) => [r.quote, r])); };
+        reindex();
+
+        const nameMap = () => {
+            const list = (currencies && currencies.length) ? currencies : FALLBACK_CURRENCIES;
+            return Object.fromEntries(list.map((c) => [c.iso_code, c]));
+        };
+        let names = nameMap();
+
+        // ===== Helpers =====
+        const pairKey = (a, b) => a + '/' + b;
+        const daysAgo = (iso) => (Date.now() - new Date(iso + 'T00:00').getTime()) / 86400000;
+        const fmtDate = (iso) => new Date(iso + 'T00:00').toLocaleDateString([], { day: 'numeric', month: 'short' });
+        const rtf = new Intl.RelativeTimeFormat([], { numeric: 'auto' });
+        const ago = (ms) => {
+            const d = Math.round((ms - Date.now()) / 86400000);
+            return d === 0 ? 'today' : rtf.format(d, 'day');
+        };
+
+        // accepts "1 234,56" and "1234.56"; returns null for anything not finite
+        function parseAmount(str) {
+            const cleaned = String(str).replace(/[\s  ']/g, '').replace(',', '.');
+            if (!/^-?\d*\.?\d+$/.test(cleaned)) return null;
+            const n = Number(cleaned);
+            return Number.isFinite(n) ? n : null;
+        }
+
+        const fmtAmount = (n) => new Intl.NumberFormat([], {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: (n !== 0 && Math.abs(n) < 1) ? 4 : 2,
+        }).format(n);
+
+        const fmtRate = (r) => new Intl.NumberFormat([], {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: r >= 1000 ? 2 : r >= 1 ? 4 : 6,
+        }).format(r);
+
+        // ===== Rate resolution: override > live > cached > none =====
+        function resolveRate(from, to) {
+            const direct = overrides[pairKey(from, to)];
+            if (direct) return { rate: direct.rate, source: 'manual', setAt: direct.setAt };
+            const inverse = overrides[pairKey(to, from)];
+            if (inverse && inverse.rate) return { rate: 1 / inverse.rate, source: 'manual', setAt: inverse.setAt, inverted: true };
+
+            const a = byQuote[from], b = byQuote[to];
+            if (a && b && a.rate) {
+                const asOf = [a.date, b.date].sort()[0];      // the older leg governs
+                return { rate: b.rate / a.rate, source: fresh ? 'live' : 'cached', asOf };
+            }
+            return { rate: null, source: 'none' };
+        }
+
+        // ===== Elements =====
+        const el = {
+            amount: document.getElementById('amount'),
+            from: document.getElementById('from'),
+            to: document.getElementById('to'),
+            result: document.getElementById('result'),
+            rateline: document.getElementById('rateline'),
+            badge: document.getElementById('badge'),
+            swap: document.getElementById('swap'),
+            refresh: document.getElementById('refresh'),
+            net: document.getElementById('net'),
+            manual: document.getElementById('manual'),
+            manualRate: document.getElementById('manual-rate'),
+            manualSave: document.getElementById('manual-save'),
+            manualClear: document.getElementById('manual-clear'),
+            manualHint: document.getElementById('manual-hint'),
+            update: document.getElementById('update'),
+            reload: document.getElementById('reload'),
+        };
+
+        // ===== Pickers =====
+        function fillPicker(select, selected) {
+            // the live set is whatever the rates payload actually carries; names cover the cold start
+            const all = (Object.keys(byQuote).length ? Object.keys(byQuote) : Object.keys(names)).sort();
+            const recent = ui.recent.filter((c) => all.includes(c)).slice(0, 5);
+            const label = (c) => c + (names[c] ? ' — ' + names[c].name : '');
+            const opt = (c) => '<option value="' + c + '">' + label(c) + '</option>';
+            let html = '';
+            if (recent.length) html += '<optgroup label="Recent">' + recent.map(opt).join('') + '</optgroup>';
+            html += '<optgroup label="All">' + all.map(opt).join('') + '</optgroup>';
+            select.innerHTML = html;
+            select.value = selected;
+        }
+
+        const rebuildPickers = () => { fillPicker(el.from, ui.from); fillPicker(el.to, ui.to); };
+
+        function noteRecent(code) {
+            ui.recent = [code].concat(ui.recent.filter((c) => c !== code)).slice(0, 5);
+        }
+
+        // ===== Render =====
+        function render() {
+            const { from, to } = ui;
+            const r = resolveRate(from, to);
+            const amount = parseAmount(el.amount.value);
+
+            if (r.rate == null || amount == null) {
+                el.result.textContent = '—';
+                el.result.classList.add('empty');
+            } else {
+                el.result.textContent = fmtAmount(amount * r.rate);
+                el.result.classList.remove('empty');
+            }
+
+            const sym = (names[to] && names[to].symbol) ? names[to].symbol : to;
+            if (r.rate == null) {
+                el.rateline.innerHTML = '<span class="dim">No rate for ' + from + ' → ' + to + ' yet.</span>';
+                el.badge.textContent = 'no rate — set one';
+                el.badge.className = 'badge none';
+            } else {
+                el.rateline.innerHTML = '1 ' + from + ' = <strong>' + fmtRate(r.rate) + '</strong> ' + sym;
+                if (r.source === 'manual') {
+                    el.badge.textContent = 'manual' + (r.inverted ? ' (inverted)' : '');
+                    el.badge.className = 'badge manual';
+                } else {
+                    const stale = daysAgo(r.asOf) > STALE_DAYS;
+                    el.badge.textContent = fmtDate(r.asOf)
+                        + (r.source === 'cached' ? ' · cached' : '')
+                        + (stale ? ' · stale' : '');
+                    el.badge.className = 'badge' + (stale ? ' stale' : '');
+                }
+            }
+
+            const own = overrides[pairKey(from, to)];
+            el.manualClear.classList.toggle('hidden', !own);
+            if (own) {
+                el.manualRate.value = String(own.rate);
+                el.manualHint.textContent = 'Override active for ' + from + ' → ' + to + ', set ' + ago(own.setAt)
+                    + '. Clear it to go back to fetched rates.';
+            } else {
+                el.manualRate.value = '';
+                el.manualRate.placeholder = '1 ' + from + ' = ? ' + to;
+                el.manualHint.textContent = (r.rate == null)
+                    ? 'No cached rate for this pair. Enter one to convert offline.'
+                    : 'Saving a rate here overrides the fetched one for ' + from + ' → ' + to + ' until you clear it.';
+            }
+            if (r.source === 'none') el.manual.open = true;
+
+            el.net.classList.toggle('hidden', navigator.onLine);
+            write(K.ui, ui);
+        }
+
+        // ===== Network =====
+        async function getJSON(path) {
+            const res = await fetch(API + path);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+        }
+
+        // no TTL of our own: the API sends cache-control with a max-age that expires at the
+        // next publish, so the browser's own HTTP cache is the throttle.
+        async function refreshRates({ explicit = false } = {}) {
+            el.refresh.disabled = true;
+            let failed = false;
+            try {
+                const body = await getJSON('/rates?base=' + BASE);
+                if (!Array.isArray(body) || !body.length) throw new Error('unexpected body');
+                rates = body;                      // verbatim
+                write(K.rates, rates);
+                reindex();
+                fresh = true;
+                if (!currencies) await refreshCurrencies();
+            } catch (err) {
+                failed = true;
+            } finally {
+                el.refresh.disabled = false;
+            }
+
+            if (failed && explicit) {               // only an explicit tap surfaces the failure
+                el.badge.textContent = navigator.onLine ? 'refresh failed' : 'offline';
+                el.badge.className = 'badge stale';
+                setTimeout(render, 1800);
+                return;
+            }
+            rebuildPickers();
+            render();
+        }
+
+        async function refreshCurrencies() {
+            try {
+                const body = await getJSON('/currencies');
+                if (!Array.isArray(body) || !body.length) return;
+                currencies = body;                 // verbatim
+                write(K.currencies, currencies);
+                names = nameMap();
+            } catch {}
+        }
+
+        // ===== Events =====
+        el.amount.addEventListener('input', () => { ui.amount = el.amount.value; render(); });
+
+        el.from.addEventListener('change', () => { ui.from = el.from.value; noteRecent(ui.from); rebuildPickers(); render(); });
+        el.to.addEventListener('change', () => { ui.to = el.to.value; noteRecent(ui.to); rebuildPickers(); render(); });
+
+        el.swap.addEventListener('click', () => {
+            const f = ui.from; ui.from = ui.to; ui.to = f;
+            rebuildPickers();
+            render();
+        });
+
+        el.refresh.addEventListener('click', () => refreshRates({ explicit: true }));
+
+        el.result.addEventListener('click', () => {
+            if (el.result.classList.contains('empty') || !navigator.clipboard) return;
+            navigator.clipboard.writeText(el.result.textContent).then(() => {
+                const text = el.badge.textContent, cls = el.badge.className;
+                el.badge.textContent = 'copied';
+                setTimeout(() => { el.badge.textContent = text; el.badge.className = cls; }, 900);
+            }).catch(() => {});
+        });
+
+        el.manualSave.addEventListener('click', () => {
+            const rate = parseAmount(el.manualRate.value);
+            if (rate == null || rate <= 0) { el.manualRate.focus(); return; }
+            overrides[pairKey(ui.from, ui.to)] = { rate, setAt: Date.now() };
+            write(K.overrides, overrides);
+            render();
+        });
+
+        el.manualClear.addEventListener('click', () => {
+            delete overrides[pairKey(ui.from, ui.to)];
+            write(K.overrides, overrides);
+            render();
+        });
+
+        window.addEventListener('online', () => { render(); refreshRates(); });
+        window.addEventListener('offline', render);
+
+        // ===== Boot =====
+        el.amount.value = ui.amount;
+        rebuildPickers();
+        render();
+        refreshRates();
+
+        // ===== Service worker + update banner =====
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').then((reg) => {
+                const offer = (worker) => {
+                    if (!worker) return;
+                    el.update.classList.remove('hidden');
+                    el.reload.onclick = () => worker.postMessage('SKIP_WAITING');
+                };
+                if (reg.waiting && navigator.serviceWorker.controller) offer(reg.waiting);
+                reg.addEventListener('updatefound', () => {
+                    const sw = reg.installing;
+                    if (!sw) return;
+                    sw.addEventListener('statechange', () => {
+                        if (sw.state === 'installed' && navigator.serviceWorker.controller) offer(reg.waiting || sw);
+                    });
+                });
+            }).catch(() => {});
+
+            let reloading = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (reloading) return;
+                reloading = true;
+                location.reload();
+            });
+        }
+    </script>
+</body>
+</html>

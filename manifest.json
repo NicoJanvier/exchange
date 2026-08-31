@@ -1,0 +1,13 @@
+{
+  "name": "Exchange",
+  "short_name": "Exchange",
+  "description": "Offline-first currency converter with manual rate override",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0d0e14",
+  "theme_color": "#0d0e14",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
