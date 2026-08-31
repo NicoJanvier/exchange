@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Offline-first currency converter with manual rate override">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💱</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%236366f1%22/><g transform=%22translate(22,22) scale(2.333)%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><path d=%22m16 3 4 4-4 4%22/><path d=%22M20 7H4%22/><path d=%22m8 21-4-4 4-4%22/><path d=%22M4 17h16%22/></g></svg>">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon.svg">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -113,19 +113,80 @@
         }
         output#result.empty { color: var(--muted); font-weight: 500; }
 
-        select {
-            flex: 0 0 132px;
+        button.picker {
+            flex: 0 0 104px; min-width: 0;
+            display: flex; align-items: center; justify-content: space-between; gap: 6px;
             background: var(--field);
             border: 1px solid transparent;
             border-radius: 14px;
-            padding: 0 10px;
-            font: inherit; font-size: 1rem; font-weight: 600;
+            padding: 0 12px 0 14px;
+            font: inherit; font-size: 1.05rem; font-weight: 700;
             color: var(--ink);
-            -webkit-appearance: none; appearance: none;
-            text-align: center;
             cursor: pointer;
         }
-        select:focus { outline: none; border-color: var(--accent); }
+        button.picker:focus-visible { outline: none; border-color: var(--accent); }
+        button.picker:active { background: var(--line); }
+        button.picker .ico { width: 15px; height: 15px; color: var(--muted); }
+
+        /* ---- currency sheet ---- */
+        dialog#sheet {
+            border: none; padding: 0; color: var(--ink);
+            background: var(--card-solid);
+            width: min(440px, 100%);
+            max-width: 100%;
+            box-shadow: var(--shadow);
+        }
+        dialog#sheet::backdrop { background: rgba(8,9,14,0.55); backdrop-filter: blur(3px); }
+        @media (max-width: 560px) {
+            /* bottom sheet on phones: thumb-reachable, keyboard pushes it up */
+            dialog#sheet {
+                margin: 0 0 0 0; top: auto; bottom: 0;
+                max-height: 88dvh; height: 88dvh;
+                border-radius: 20px 20px 0 0;
+            }
+        }
+        @media (min-width: 561px) {
+            dialog#sheet { margin: auto; border-radius: 18px; max-height: 78vh; }
+        }
+        dialog#sheet[open] { display: flex; flex-direction: column; }
+
+        .sheet-head {
+            display: flex; align-items: center; gap: 10px;
+            padding: 14px 16px; border-bottom: 1px solid var(--line);
+            flex: none;
+        }
+        .sheet-head .ico { width: 18px; height: 18px; color: var(--muted); }
+        .sheet-head input {
+            flex: 1 1 auto; min-width: 0;
+            background: transparent; border: none; outline: none;
+            font: inherit; font-size: 1.05rem; color: var(--ink);
+        }
+        .linkbtn {
+            background: none; border: none; padding: 4px;
+            font: inherit; font-weight: 600; color: var(--accent); cursor: pointer;
+        }
+
+        #sheet-list {
+            list-style: none; margin: 0; padding: 6px 0;
+            overflow-y: auto; -webkit-overflow-scrolling: touch;
+            flex: 1 1 auto;
+        }
+        #sheet-list .group {
+            padding: 10px 16px 4px; font-size: 0.72rem; font-weight: 700;
+            letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
+        }
+        #sheet-list li[role="option"] {
+            display: flex; align-items: baseline; gap: 10px;
+            padding: 11px 16px; cursor: pointer;
+        }
+        #sheet-list li .code { font-weight: 700; width: 3.4em; flex: none; }
+        #sheet-list li .nm { flex: 1 1 auto; min-width: 0; overflow: hidden;
+                             text-overflow: ellipsis; white-space: nowrap; }
+        #sheet-list li .sym { color: var(--muted); font-size: 0.85rem; }
+        #sheet-list li[aria-selected="true"] .code { color: var(--accent); }
+        #sheet-list li.active { background: var(--field); }
+        #sheet-list mark { background: none; color: var(--accent); font-weight: 700; }
+        #sheet-empty { padding: 20px 16px; }
 
         .swapwrap { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
         .swapwrap hr { flex: 1; border: none; border-top: 1px solid var(--line); }
@@ -171,8 +232,9 @@
             font-weight: 600; list-style: none;
         }
         summary::-webkit-details-marker { display: none; }
-        summary::before { content: '\25B8  '; }
-        details[open] summary::before { content: '\25BE  '; }
+        summary { display: flex; align-items: center; gap: 7px; }
+        summary .ico { transition: transform .15s ease; }
+        details[open] summary .ico { transform: rotate(90deg); }
         .manualbox { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
         .manualbox input {
             flex: 1 1 120px; min-width: 0;
@@ -197,6 +259,19 @@
             display: flex; align-items: center; gap: 12px;
             font-size: 0.9rem;
         }
+
+        /* Icons: lucide (ISC), inlined as a sprite so the page stays self-contained.
+           Stroke presentation attributes inherit through <use>, so currentColor works. */
+        .ico {
+            width: 1em; height: 1em; flex: none;
+            fill: none; stroke: currentColor;
+            stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+        }
+        h1 .ico { width: 1.15em; height: 1.15em; color: var(--accent); stroke-width: 2.4; }
+        button.icon .ico { width: 17px; height: 17px; }
+        .pill .ico { width: 12px; height: 12px; stroke-width: 2.4; }
+        .pill { display: inline-flex; align-items: center; gap: 5px; }
+
         .banner button { margin-left: auto; }
         .hidden { display: none !important; }
         footer { text-align: center; color: var(--muted); font-size: 0.78rem; margin-top: 18px; }
@@ -204,40 +279,57 @@
     </style>
 </head>
 <body>
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+        <!-- lucide v1.38.0 icons (ISC) — see README -->
+        <symbol id="i-exchange" viewBox="0 0 24 24"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></symbol>
+        <symbol id="i-swap" viewBox="0 0 24 24"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></symbol>
+        <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+        <symbol id="i-offline" viewBox="0 0 24 24"><path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><path d="M5 12.859a10 10 0 0 1 5.17-2.69"/><path d="M19 12.859a10 10 0 0 0-2.007-1.523"/><path d="M2 8.82a15 15 0 0 1 4.177-2.643"/><path d="M22 8.82a15 15 0 0 0-11.288-3.764"/><path d="m2 2 20 20"/></symbol>
+        <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+        <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+        <symbol id="i-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></symbol>
+    </svg>
+
     <div class="wrap">
         <header>
-            <h1>💱 Exchange</h1>
-            <span id="net" class="pill hidden">offline</span>
+            <h1><svg class="ico"><use href="#i-exchange"/></svg> Exchange</h1>
+            <span id="net" class="pill hidden"><svg class="ico"><use href="#i-offline"/></svg>offline</span>
         </header>
 
         <main class="card">
-            <div class="row">
-                <input id="amount" type="text" inputmode="decimal" autocomplete="off"
-                       spellcheck="false" aria-label="Amount" placeholder="0">
-                <select id="from" aria-label="Convert from"></select>
+            <div class="field">
+                <div class="row">
+                    <input id="amount" type="text" inputmode="decimal" autocomplete="off"
+                           spellcheck="false" aria-label="Amount" placeholder="0">
+                    <button type="button" class="picker" id="from" aria-haspopup="listbox" aria-label="Convert from"><span class="code"></span><svg class="ico"><use href="#i-chevron-down"/></svg></button>
+                </div>
+                <div class="caption" id="from-name"></div>
             </div>
 
             <div class="swapwrap">
                 <hr>
-                <button id="swap" class="icon" type="button" title="Swap currencies" aria-label="Swap currencies">&#8645;</button>
+                <button id="swap" class="icon" type="button" title="Swap currencies" aria-label="Swap currencies"><svg class="ico"><use href="#i-swap"/></svg></button>
                 <hr>
             </div>
 
-            <div class="row">
-                <output id="result" class="empty" title="Tap to copy">&mdash;</output>
-                <select id="to" aria-label="Convert to"></select>
+            <div class="field">
+                <div class="row">
+                    <output id="result" class="empty" title="Tap to copy">&mdash;</output>
+                    <button type="button" class="picker" id="to" aria-haspopup="listbox" aria-label="Convert to"><span class="code"></span><svg class="ico"><use href="#i-chevron-down"/></svg></button>
+                </div>
+                <div class="caption" id="to-name"></div>
             </div>
 
             <div class="meta">
                 <div id="rateline" class="rateline"></div>
                 <div class="badges">
                     <span id="badge" class="badge"></span>
-                    <button id="refresh" class="icon" type="button" title="Refresh rates" aria-label="Refresh rates">&#8635;</button>
+                    <button id="refresh" class="icon" type="button" title="Refresh rates" aria-label="Refresh rates"><svg class="ico"><use href="#i-refresh"/></svg></button>
                 </div>
             </div>
 
             <details id="manual">
-                <summary>Set rate manually</summary>
+                <summary><svg class="ico"><use href="#i-chevron-right"/></svg>Set rate manually</summary>
                 <div class="manualbox">
                     <input id="manual-rate" type="text" inputmode="decimal" autocomplete="off"
                            spellcheck="false" aria-label="Manual rate">
@@ -253,6 +345,19 @@
             &middot; works offline
         </footer>
     </div>
+
+
+    <dialog id="sheet" aria-label="Choose a currency">
+        <div class="sheet-head">
+            <svg class="ico"><use href="#i-search"/></svg>
+            <input id="sheet-q" type="text" role="combobox" aria-expanded="true" aria-controls="sheet-list"
+                   aria-autocomplete="list" autocomplete="off" spellcheck="false" enterkeyhint="go"
+                   placeholder="Search name, code or symbol">
+            <button type="button" id="sheet-close" class="linkbtn">Cancel</button>
+        </div>
+        <ul id="sheet-list" role="listbox" tabindex="-1"></ul>
+        <p id="sheet-empty" class="hint hidden">No currency matches that.</p>
+    </dialog>
 
     <div id="update" class="banner hidden">
         <span>New version available.</span>
@@ -364,28 +469,147 @@
             manualSave: document.getElementById('manual-save'),
             manualClear: document.getElementById('manual-clear'),
             manualHint: document.getElementById('manual-hint'),
+            fromName: document.getElementById('from-name'),
+            toName: document.getElementById('to-name'),
+            sheet: document.getElementById('sheet'),
+            sheetQ: document.getElementById('sheet-q'),
+            sheetList: document.getElementById('sheet-list'),
+            sheetEmpty: document.getElementById('sheet-empty'),
+            sheetClose: document.getElementById('sheet-close'),
             update: document.getElementById('update'),
             reload: document.getElementById('reload'),
         };
 
         // ===== Pickers =====
-        function fillPicker(select, selected) {
-            // the live set is whatever the rates payload actually carries; names cover the cold start
-            const all = (Object.keys(byQuote).length ? Object.keys(byQuote) : Object.keys(names)).sort();
-            const recent = ui.recent.filter((c) => all.includes(c)).slice(0, 5);
-            const label = (c) => c + (names[c] ? ' — ' + names[c].name : '');
-            const opt = (c) => '<option value="' + c + '">' + label(c) + '</option>';
-            let html = '';
-            if (recent.length) html += '<optgroup label="Recent">' + recent.map(opt).join('') + '</optgroup>';
-            html += '<optgroup label="All">' + all.map(opt).join('') + '</optgroup>';
-            select.innerHTML = html;
-            select.value = selected;
-        }
+        // A native <select> was the obvious choice and the wrong one: it can only display the
+        // 3-letter code (a full "EUR — Euro" label would be truncated), it offers no search on
+        // iOS, and scrolling 165 options to find MUR is hopeless. So: a button that opens a
+        // searchable sheet.
+        const currencyRows = () => {
+            const codes = Object.keys(byQuote).length ? Object.keys(byQuote) : Object.keys(names);
+            return codes.map((c) => ({
+                code: c,
+                name: (names[c] && names[c].name) || c,
+                symbol: (names[c] && names[c].symbol) || '',
+            }));
+        };
 
-        const rebuildPickers = () => { fillPicker(el.from, ui.from); fillPicker(el.to, ui.to); };
+        const paintPickers = () => {
+            el.from.querySelector('.code').textContent = ui.from;
+            el.to.querySelector('.code').textContent = ui.to;
+        };
 
         function noteRecent(code) {
-            ui.recent = [code].concat(ui.recent.filter((c) => c !== code)).slice(0, 5);
+            ui.recent = [code].concat(ui.recent.filter((c) => c !== code)).slice(0, 6);
+        }
+
+        // ===== Currency sheet =====
+        let sheetSide = 'from';     // which picker opened it
+        let flat = [];              // rows in display order, for keyboard nav
+        let active = 0;
+
+        // NFD strips accents (Króna -> Krona), but letters with a stroke or bar don't
+        // decompose — the live currency list has Złoty, Đồng and Paʻanga — so map those too.
+        const FOLD = { 'ł': 'l', 'đ': 'd', 'ð': 'd', 'ø': 'o', 'ħ': 'h', 'ŀ': 'l', 'ı': 'i',
+                       'æ': 'ae', 'œ': 'oe', 'ß': 'ss', 'þ': 'th', 'ʻ': "'", '\u2019': "'" };
+        const norm = (str) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+            .replace(/[łđðøħŀıæœßþʻ\u2019]/g, (c) => FOLD[c] || c);
+        const esc = (str) => str.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+        // highlight the matched run so it's obvious why a row is in the list
+        function hl(text, q) {
+            if (!q) return esc(text);
+            const i = norm(text).indexOf(q);
+            if (i < 0) return esc(text);
+            return esc(text.slice(0, i)) + '<mark>' + esc(text.slice(i, i + q.length)) + '</mark>' + esc(text.slice(i + q.length));
+        }
+
+        // rank: exact code, code prefix, name prefix, any word prefix, then substrings
+        function grouped(q) {
+            const all = currencyRows();
+            if (!q) {
+                const recent = ui.recent.map((c) => all.find((r) => r.code === c)).filter(Boolean);
+                const taken = new Set(recent.map((r) => r.code));
+                const rest = all.filter((r) => !taken.has(r.code)).sort((a, b) => a.code.localeCompare(b.code));
+                return [
+                    recent.length ? { label: 'Recent', items: recent } : null,
+                    { label: all.length + ' currencies', items: rest },
+                ].filter(Boolean);
+            }
+            const scored = [];
+            for (const r of all) {
+                const c = norm(r.code), n = norm(r.name), sy = norm(r.symbol);
+                let rank = -1;
+                if (c === q) rank = 0;
+                else if (c.startsWith(q)) rank = 1;
+                else if (n.startsWith(q)) rank = 2;
+                else if (n.split(/[\s-]+/).some((w) => w.startsWith(q))) rank = 3;
+                else if (c.includes(q)) rank = 4;
+                else if (n.includes(q)) rank = 5;
+                else if (sy && sy.includes(q)) rank = 6;
+                if (rank >= 0) scored.push([rank, r]);
+            }
+            scored.sort((a, b) => a[0] - b[0] || a[1].code.localeCompare(b[1].code));
+            const items = scored.map((x) => x[1]);
+            return items.length ? [{ label: items.length + (items.length === 1 ? ' match' : ' matches'), items }] : [];
+        }
+
+        function paintSheet() {
+            const q = norm(el.sheetQ.value.trim());
+            const groups = grouped(q);
+            flat = groups.flatMap((g) => g.items);
+            active = flat.findIndex((r) => r.code === ui[sheetSide]);
+            if (active < 0) active = 0;
+
+            el.sheetList.innerHTML = groups.map((g) =>
+                '<li class="group" role="presentation">' + esc(g.label) + '</li>' +
+                g.items.map((r) => {
+                    const i = flat.indexOf(r);
+                    return '<li role="option" data-code="' + r.code + '" id="opt-' + r.code + '"' +
+                        ' aria-selected="' + (r.code === ui[sheetSide]) + '"' +
+                        (i === active ? ' class="active"' : '') + '>' +
+                        '<span class="code">' + hl(r.code, q) + '</span>' +
+                        '<span class="nm">' + hl(r.name, q) + '</span>' +
+                        (r.symbol ? '<span class="sym">' + esc(r.symbol) + '</span>' : '') +
+                        '</li>';
+                }).join('')
+            ).join('');
+
+            el.sheetEmpty.classList.toggle('hidden', flat.length > 0);
+            el.sheetQ.setAttribute('aria-activedescendant', flat.length ? 'opt-' + flat[active].code : '');
+        }
+
+        function markActive(next) {
+            if (!flat.length) return;
+            active = (next + flat.length) % flat.length;
+            const items = [...el.sheetList.querySelectorAll('li[role="option"]')];
+            items.forEach((li) => li.classList.remove('active'));
+            const li = items.find((x) => x.dataset.code === flat[active].code);
+            if (li) { li.classList.add('active'); li.scrollIntoView({ block: 'nearest' }); }
+            el.sheetQ.setAttribute('aria-activedescendant', 'opt-' + flat[active].code);
+        }
+
+        function openSheet(side) {
+            sheetSide = side;
+            el.sheetQ.value = '';
+            paintSheet();
+            el.sheet.showModal();
+            const current = el.sheetList.querySelector('li[aria-selected="true"]');
+            if (current) current.scrollIntoView({ block: 'center' });
+            // showModal() autofocuses the first focusable child — the search field — which on a
+            // phone throws the keyboard up over the list you're trying to browse. Move focus to
+            // the list instead; tapping the field still opens the keyboard when you want it.
+            const touch = (navigator.maxTouchPoints || 0) > 0 || matchMedia('(pointer: coarse)').matches;
+            if (touch) el.sheetList.focus(); else el.sheetQ.focus();
+        }
+
+        function choose(code) {
+            if (!code) return;
+            ui[sheetSide] = code;
+            noteRecent(code);
+            el.sheet.close();
+            paintPickers();
+            render();
         }
 
         // ===== Render =====
@@ -401,6 +625,9 @@
                 el.result.textContent = fmtAmount(amount * r.rate);
                 el.result.classList.remove('empty');
             }
+
+            el.fromName.textContent = names[from] ? names[from].name : '';
+            el.toName.textContent = names[to] ? names[to].name : '';
 
             const sym = (names[to] && names[to].symbol) ? names[to].symbol : to;
             if (r.rate == null) {
@@ -472,7 +699,7 @@
                 setTimeout(render, 1800);
                 return;
             }
-            rebuildPickers();
+            paintPickers();
             render();
         }
 
@@ -489,12 +716,26 @@
         // ===== Events =====
         el.amount.addEventListener('input', () => { ui.amount = el.amount.value; render(); });
 
-        el.from.addEventListener('change', () => { ui.from = el.from.value; noteRecent(ui.from); rebuildPickers(); render(); });
-        el.to.addEventListener('change', () => { ui.to = el.to.value; noteRecent(ui.to); rebuildPickers(); render(); });
+        el.from.addEventListener('click', () => openSheet('from'));
+        el.to.addEventListener('click', () => openSheet('to'));
+
+        el.sheetQ.addEventListener('input', paintSheet);
+        el.sheetQ.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowDown') { e.preventDefault(); markActive(active + 1); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); markActive(active - 1); }
+            else if (e.key === 'Enter') { e.preventDefault(); choose(flat[active] && flat[active].code); }
+        });
+        el.sheetList.addEventListener('click', (e) => {
+            const li = e.target.closest('li[role="option"]');
+            if (li) choose(li.dataset.code);
+        });
+        el.sheetClose.addEventListener('click', () => el.sheet.close());
+        // tapping the backdrop closes it (the dialog itself is the click target there)
+        el.sheet.addEventListener('click', (e) => { if (e.target === el.sheet) el.sheet.close(); });
 
         el.swap.addEventListener('click', () => {
             const f = ui.from; ui.from = ui.to; ui.to = f;
-            rebuildPickers();
+            paintPickers();
             render();
         });
 
@@ -528,13 +769,39 @@
 
         // ===== Boot =====
         el.amount.value = ui.amount;
-        rebuildPickers();
+        paintPickers();
         render();
         refreshRates();
 
         // ===== Service worker + update banner =====
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').then((reg) => {
+        // On localhost the worker is bypassed: it would serve a cached index.html and hide
+        // every edit until CACHE changes. Add ?sw=1 to opt in and test offline behaviour.
+        const h = location.hostname;
+        const DEV = ['localhost', '127.0.0.1', '[::1]', ''].includes(h)
+            || h.endsWith('.localhost') || h.endsWith('.local')     // bonjour / dev TLDs
+            || /^127\./.test(h)
+            || /^192\.168\./.test(h)                                // LAN: phone testing over wifi
+            || /^10\./.test(h)
+            || /^172\.(1[6-9]|2\d|3[01])\./.test(h);
+        const SW_ENABLED = !DEV || new URLSearchParams(location.search).has('sw');
+
+        if ('serviceWorker' in navigator && !SW_ENABLED) {
+            // clean up anything a previous ?sw=1 session left behind, or this page would
+            // still be served from that worker's cache
+            navigator.serviceWorker.getRegistrations()
+                .then((regs) => Promise.all(regs.map((r) => r.unregister())))
+                .then((done) => { if (done.length) location.reload(); })
+                .catch(() => {});
+            if (window.caches) {
+                caches.keys().then((keys) => keys.filter((k) => k.startsWith('exchange-'))
+                    .forEach((k) => caches.delete(k))).catch(() => {});
+            }
+            console.info('dev: service worker bypassed — add ?sw=1 to enable it');
+        }
+
+        if ('serviceWorker' in navigator && SW_ENABLED) {
+            navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((reg) => {
+                reg.update().catch(() => {});   // ask on every load, not just on first install
                 const offer = (worker) => {
                     if (!worker) return;
                     el.update.classList.remove('hidden');

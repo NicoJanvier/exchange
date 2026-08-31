@@ -13,10 +13,23 @@ Live at [exchange.janvier.dev](https://exchange.janvier.dev).
 ## Run locally
 
 ```sh
-npx serve -l 5173 .
+python3 -m http.server 5173     # or: npx serve -l 5173 .
 ```
 
-Real HTTP is required: service workers don't register over `file://`.
+On `localhost` the service worker is **bypassed**, and any worker or `exchange-*` cache left
+over from a previous session is unregistered and deleted on load. Otherwise the worker would
+serve a cached `index.html` and hide every edit until `CACHE` changed — and since all the CSS
+and JS is inline, that means hiding the entire app.
+
+To test offline behaviour locally, opt in with **`?sw=1`**:
+
+```
+http://localhost:5173/?sw=1
+```
+
+Then DevTools → Network → Offline. Drop the flag and reload to go back to plain dev.
+
+`file://` won't work either way: service workers need a real origin.
 
 ## How a rate is chosen
 
@@ -58,5 +71,20 @@ a stale rate forever.
 
 ## Deploy
 
-Push to `main` → GitHub Actions → Pages. Bump `CACHE` in `sw.js` on every deploy, or
-clients keep the old shell until it changes.
+Push to `main` → GitHub Actions → Pages.
+
+Bump `CACHE` in `sw.js` when a **non-HTML** asset changes (`icon.svg`, `manifest.json`) —
+those are cache-first. `index.html` is network-first, so it doesn't need a bump. The version
+tracks published deploys, not edits: it stays at `v1` until something actually ships.
+
+## Icons
+
+[Lucide](https://lucide.dev) v1.38.0, ISC licensed — `arrow-right-left`, `arrow-up-down`,
+`refresh-cw`, `wifi-off`, `chevron-down`, `chevron-right`. The paths are inlined as an SVG
+sprite in `index.html` rather than loaded from a CDN, so the page stays self-contained and
+works offline. They inherit `currentColor`, so both themes are covered by one copy.
+
+> ISC License. Copyright (c) 2026 Lucide Icons and Contributors.
+> Permission to use, copy, modify, and/or distribute this software for any purpose with or
+> without fee is hereby granted, provided that the above copyright notice and this permission
+> notice appear in all copies.
