@@ -1,6 +1,8 @@
 // Cache-first service worker for offline use. Bump CACHE to force an update.
-const CACHE = 'exchange-v1';
-const ASSETS = ['./', './index.html', './manifest.json', './icon.svg'];
+const CACHE = 'exchange-v2';
+const ASSETS = ['./', './index.html', './manifest.json', './fonts/nunito-latin-wght.woff2',
+  './icons/icon.svg', './icons/favicon-32.png', './icons/apple-touch-icon.png',
+  './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png'];
 
 self.addEventListener('install', (e) => {
   // do NOT skipWaiting here — wait until the user taps "Reload" in the app
@@ -38,7 +40,7 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Everything else (manifest, icon) is cache-first — it only changes with a CACHE bump.
+  // Everything else (manifest, icon, font) is cache-first — it only changes with a CACHE bump.
   e.respondWith(
     caches.match(req).then((hit) =>
       hit || fetch(req).then((res) => {

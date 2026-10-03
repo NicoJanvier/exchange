@@ -4,296 +4,514 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Offline-first currency converter with manual rate override">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%236366f1%22/><g transform=%22translate(22,22) scale(2.333)%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><path d=%22m16 3 4 4-4 4%22/><path d=%22M20 7H4%22/><path d=%22m8 21-4-4 4-4%22/><path d=%22M4 17h16%22/></g></svg>">
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+    <link rel="icon" href="icons/favicon-32.png" type="image/png" sizes="32x32">
     <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="icon.svg">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" sizes="180x180">
+    <link rel="preload" href="fonts/nunito-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Exchange">
-    <meta name="theme-color" content="#f4f5fb" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#0d0e14" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#e8faf5" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#141a2c" media="(prefers-color-scheme: dark)">
     <title>Exchange</title>
 
     <style>
+        /* Visual language: animal-island-ui (MIT) — https://github.com/guokaigdg/animal-island-ui
+           Re-implemented in plain CSS from its design-system specs; no React runtime. */
+
+        /* Nunito (OFL), self-hosted so the app keeps its look offline */
+        @font-face {
+            font-family: 'Nunito';
+            src: url('fonts/nunito-latin-wght.woff2') format('woff2');
+            font-weight: 200 1000; font-style: normal; font-display: swap;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
-            color-scheme: light dark;
-            --bg: #f4f5fb;
-            --bg-grad: radial-gradient(1200px 600px at 50% -10%, #e9ecff 0%, #f4f5fb 60%);
-            --card: rgba(255,255,255,0.85);
-            --card-solid: #ffffff;
-            --ink: #14151a;
-            --muted: #71727f;
-            --line: #e7e8f0;
-            --field: #f3f4fa;
-            --warn: #d98216;
-            --warn-soft: rgba(217,130,22,0.14);
-            --manual: #7c5cf0;
-            --manual-soft: rgba(124,92,240,0.14);
-            --off: #f0445a;
-            --accent: #6366f1;
-            --accent-ink: #ffffff;
-            --shadow: 0 10px 30px -12px rgba(40,42,80,0.22);
+            color-scheme: light;
+            --font: Nunito, -apple-system, 'Segoe UI', sans-serif;
+            --ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+            /* wallpaper: dots-teal */
+            --wall: #e8faf5;
+            --wall-dot: rgba(130, 213, 187, 0.32);
+            --wall-dot2: rgba(170, 235, 210, 0.22);
+
+            --card: rgb(247, 243, 223);
+            --field: #fffdf7;
+            --ink: #794f27;            /* headline brown — never pure black */
+            --body: #725d42;
+            --muted: #9f927d;
+            --placeholder: #c4b89e;
+            --line: #c4b89e;
+            --btn: #f8f8f0;
+            --btn-shadow: #bdaea0;
+            --btn-border: #dcd8d1;
+
+            --primary: #19c8b9;
+            --primary-active: #11a89b;
+            --primary-bg: #e6f9f6;
+            --focus: #ffcc00;
+            --focus-d: #e0b800;
+            --focus-ring: 0 3px 0 0 var(--focus-d), 0 0 0 3px rgba(255, 204, 0, 0.15);
+
+            /* tag palette (soft variants) */
+            --tag: #f5f0e6;      --tag-ink: #8f734f;
+            --manual: #f3e5f5;   --manual-ink: #7b1fa2;
+            --warn: #fff8e1;     --warn-ink: #c98a0b;
+            --off: #ffebee;      --off-ink: #c62828;
+
+            /* Title ribbon: app-teal, one step deeper so white text clears 3:1 */
+            --rf: #40a880; --rb: #2b7a5c; --rk: #0f3d2e; --rt: #fff;
+
+            --shadow-sm: 0 2px 4px 0 rgba(61, 52, 40, 0.06);
+            --shadow-base: 0 3px 10px 0 rgba(61, 52, 40, 0.10);
+            --panel-shadow: 0 -12px 32px rgba(61, 52, 40, 0.18);
+            --mask: rgba(61, 52, 40, 0.28);
         }
 
+        /* Starry night: the library ships no dark theme. Deep navy surfaces and cream ink; the
+           yellow input focus is kept and reads like starlight, the mint accent stays. */
         @media (prefers-color-scheme: dark) {
             :root {
-                --bg: #0d0e14;
-                --bg-grad: radial-gradient(1200px 600px at 50% -10%, #1b1d31 0%, #0d0e14 60%);
-                --card: rgba(26,27,38,0.72);
-                --card-solid: #1a1b26;
-                --ink: #f1f2f7;
-                --muted: #9a9bac;
-                --line: #2a2c3c;
-                --field: #20212e;
-                --warn: #f0a437;
-                --warn-soft: rgba(240,164,55,0.16);
-                --manual: #a58cff;
-                --manual-soft: rgba(165,140,255,0.18);
-                --off: #ff5f72;
-                --accent: #818cf8;
-                --accent-ink: #0d0e14;
-                --shadow: 0 14px 40px -14px rgba(0,0,0,0.7);
+                color-scheme: dark;
+                --wall: #141a2c;
+                --wall-dot: rgba(255, 228, 150, 0.10);
+                --wall-dot2: rgba(200, 215, 255, 0.05);
+                --card: #1f2740;
+                --field: #171d31;
+                --ink: #f6ecd6;
+                --body: #dfd8c6;
+                --muted: #a3a6b8;
+                --placeholder: #5e6681;
+                --line: #3a4466;
+                --btn: #2a3352;
+                --btn-shadow: #0a0e1a;
+                --btn-border: #3a4466;
+                --primary: #3dd4c6;
+                --primary-active: #19c8b9;
+                --primary-bg: #1d3d4a;
+                --focus-ring: 0 3px 0 0 #e0b800, 0 0 0 3px rgba(255, 204, 0, 0.18);
+                --tag: #2a3352;      --tag-ink: #dfd8c6;
+                --manual: #3a3260;   --manual-ink: #d9c2ff;
+                --warn: #403a22;     --warn-ink: #f7cd67;
+                --off: #47283a;      --off-ink: #ffa3a3;
+                --shadow-sm: 0 2px 4px 0 rgba(0, 0, 0, 0.25);
+                --shadow-base: 0 3px 10px 0 rgba(0, 0, 0, 0.35);
+                --panel-shadow: 0 -12px 32px rgba(0, 0, 0, 0.5);
+                --mask: rgba(5, 7, 15, 0.6);
             }
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--bg-grad), var(--bg);
+            font-family: var(--font);
+            font-weight: 500;
+            letter-spacing: 0.01em;
+            background:
+                radial-gradient(circle, var(--wall-dot) 1.5px, transparent 1.5px) 0 0 / 28px 28px,
+                radial-gradient(circle, var(--wall-dot2) 1px, transparent 1px) 7px 7px / 14px 14px,
+                var(--wall);
             background-attachment: fixed;
-            color: var(--ink);
+            color: var(--body);
             line-height: 1.5;
-            padding: 32px 16px 64px;
+            padding: 36px 16px 64px;
+            min-height: 100dvh;
             -webkit-font-smoothing: antialiased;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .wrap { max-width: 440px; margin: 0 auto; }
 
         header {
-            display: flex; align-items: center; justify-content: center; gap: 10px;
-            margin-bottom: 22px;
-        }
-        h1 {
-            font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em;
-            display: inline-flex; align-items: center; gap: 8px;
+            display: flex; flex-direction: column; align-items: center; gap: 12px;
+            margin-bottom: 30px;
         }
 
+        /* ---- Title: swallowtail ribbon ---- */
+        h1.ribbon {
+            position: relative;
+            display: inline-flex; align-items: center; justify-content: center;
+            height: 2em; padding: 0 1.6em;
+            font-size: 1.5rem; font-weight: 900; line-height: 1;
+            letter-spacing: 0.04em; white-space: nowrap;
+            color: var(--rt);
+            filter: drop-shadow(0 0.08em 0.12em rgba(0, 0, 0, 0.05));
+            user-select: none;
+        }
+        .ribbon > i { position: absolute; display: block; font-style: normal; }
+        .ribbon .back {
+            bottom: -0.4em; width: 1.7em; height: 1.7em;
+            background: var(--rb); z-index: 1;
+        }
+        .ribbon .back.l { left: -0.6em; border-radius: 0.08em 0 0 0.08em;
+                          clip-path: polygon(100% 0%, 100% 100%, 0% 100%, 30% 50%, 0% 0%); }
+        .ribbon .back.r { right: -0.6em; border-radius: 0 0.08em 0.08em 0;
+                          clip-path: polygon(0% 0%, 100% 0%, 70% 50%, 100% 100%, 0% 100%); }
+        .ribbon .fold { top: calc(100% - 0.05em); width: 0; height: 0; border-style: solid; z-index: 2; }
+        .ribbon .fold.l { left: 0.15em; border-width: 0 0.95em 0.45em 0;
+                          border-color: transparent var(--rk) transparent transparent; }
+        .ribbon .fold.r { right: 0.16em; border-width: 0 0 0.45em 0.95em;
+                          border-color: transparent transparent transparent var(--rk); }
+        .ribbon .front {
+            inset: 0 0.1em; background: var(--rf); border-radius: 0.2em; z-index: 3;
+            transform: perspective(11.5em) rotateX(3deg);
+            box-shadow: inset 0 -0.06em 0 rgba(0, 0, 0, 0.05);
+        }
+        .ribbon .txt {
+            position: relative; z-index: 4;
+            display: inline-flex; align-items: center; gap: 0.35em;
+            padding-top: 0.06em;
+            text-shadow: 0 0.04em 0.08em rgba(0, 0, 0, 0.08);
+        }
+        .ribbon .txt .ico { width: 1.3em; height: 1.3em; margin-top: -0.12em; color: #6b4a2e; }
+
+        /* ---- Card: no shadow, layering by tone ---- */
         .card {
             background: var(--card);
-            backdrop-filter: blur(12px);
-            border: 1px solid var(--line);
             border-radius: 20px;
-            box-shadow: var(--shadow);
-            padding: 18px;
+            padding: 20px;
         }
 
         .row { display: flex; gap: 10px; align-items: stretch; }
 
+        /* ---- Input: cream pill, yellow focus ---- */
         input#amount, output#result {
             flex: 1 1 auto; min-width: 0;
+            height: 64px;
             background: var(--field);
-            border: 1px solid transparent;
-            border-radius: 14px;
-            padding: 14px 16px;
+            border: none;
+            border-radius: 50px;
+            padding: 0 24px;
             font: inherit;
-            font-size: 1.6rem;
-            font-weight: 650;
+            font-size: 1.65rem;
+            font-weight: 800;
             font-variant-numeric: tabular-nums;
-            letter-spacing: -0.02em;
+            letter-spacing: 0.01em;
             color: var(--ink);
             text-align: right;
+            transition: box-shadow 0.2s var(--ease), background 0.2s var(--ease);
         }
-        input#amount:focus { outline: none; border-color: var(--accent); background: var(--card-solid); }
+        input#amount::placeholder { color: var(--placeholder); font-weight: 400; }
+        input#amount:hover { box-shadow: 0 3px 0 0 var(--line); }
+        input#amount:focus {
+            outline: none;
+            box-shadow: var(--focus-ring);
+        }
         output#result {
-            display: block;
+            display: flex; align-items: center; justify-content: flex-end;
             background: transparent;
+            color: var(--primary-active);
             cursor: pointer;
             -webkit-user-select: all; user-select: all;
         }
-        output#result.empty { color: var(--muted); font-weight: 500; }
+        @media (prefers-color-scheme: dark) { output#result { color: var(--primary); } }
+        output#result.empty { color: var(--placeholder); font-weight: 600; }
 
-        button.picker {
-            flex: 0 0 104px; min-width: 0;
-            display: flex; align-items: center; justify-content: space-between; gap: 6px;
-            background: var(--field);
-            border: 1px solid transparent;
-            border-radius: 14px;
-            padding: 0 12px 0 14px;
-            font: inherit; font-size: 1.05rem; font-weight: 700;
-            color: var(--ink);
-            cursor: pointer;
+        .caption {
+            font-size: 0.82rem; font-weight: 600; color: var(--muted);
+            text-align: right; padding: 6px 128px 0 0; min-height: 1.8em;
         }
-        button.picker:focus-visible { outline: none; border-color: var(--accent); }
-        button.picker:active { background: var(--line); }
-        button.picker .ico { width: 15px; height: 15px; color: var(--muted); }
 
-        /* ---- currency sheet ---- */
+        /* ---- Buttons ---- */
+        button { font: inherit; letter-spacing: 0.02em; -webkit-tap-highlight-color: transparent; }
+        button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+        /* default: soft elevation, teal on hover */
+        button.picker {
+            flex: 0 0 108px; min-width: 0; height: 64px;
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            background: var(--btn);
+            border: 2px solid var(--btn-border);
+            border-radius: 50px;
+            padding: 0 12px 0 16px;
+            font-size: 1.1rem; font-weight: 800;
+            color: var(--ink);
+            box-shadow: var(--shadow-sm);
+            cursor: pointer;
+            transition: all 0.2s var(--ease);
+        }
+        button.picker .ico { width: 18px; height: 18px; color: var(--muted); transition: color 0.2s var(--ease); }
+        @media (hover: hover) {
+            button.picker:hover { color: var(--primary); border-color: var(--primary);
+                                  box-shadow: var(--shadow-base); transform: translateY(-1px); }
+            button.picker:hover .ico { color: var(--primary); }
+        }
+        button.picker:active { color: var(--primary-active); border-color: var(--primary-active);
+                               transform: translateY(0); box-shadow: var(--shadow-sm); }
+
+        /* primary: the 3D game button — the only place the stacked shadow lives */
+        .btn-primary {
+            background: var(--btn); color: var(--ink);
+            border: 2px solid var(--btn);
+            font-weight: 700; line-height: 1;
+            box-shadow: 0 5px 0 0 var(--btn-shadow);
+            cursor: pointer;
+            transition: all 0.15s var(--ease);
+        }
+        @media (hover: hover) {
+            .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 0 0 var(--btn-shadow); }
+        }
+        .btn-primary:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 1px 0 0 var(--btn-shadow); }
+        .btn-primary:disabled { opacity: 0.5; cursor: default; }
+
+        button.round {
+            width: 52px; height: 52px; flex: 0 0 52px;
+            border-radius: 50%;
+            display: grid; place-items: center;
+            padding: 0;
+        }
+        #swap { display: flex; align-items: center; justify-content: center; gap: 0; }
+        #swap .ico { width: 20px; height: 20px; margin: 0 -3px; }
+
+        button.ghost-round {
+            width: 40px; height: 40px; flex: 0 0 40px;
+            border-radius: 50%;
+            display: grid; place-items: center;
+            background: var(--btn); color: var(--ink);
+            border: 2px solid var(--btn-border);
+            box-shadow: var(--shadow-sm);
+            cursor: pointer;
+            transition: all 0.2s var(--ease);
+        }
+        button.ghost-round .ico { width: 22px; height: 22px; }
+        @media (hover: hover) {
+            button.ghost-round:hover:not(:disabled) { border-color: var(--primary);
+                box-shadow: var(--shadow-base); transform: translateY(-1px); }
+        }
+        button.ghost-round:disabled .ico { animation: spin 0.9s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        button.pill-btn {
+            height: 45px; padding: 0 22px; border-radius: 50px; font-size: 0.95rem;
+        }
+        button.pill-btn.quiet {
+            background: transparent; color: var(--muted);
+            border: 2px solid var(--btn-border); box-shadow: var(--shadow-sm);
+            font-weight: 700; cursor: pointer; transition: all 0.2s var(--ease);
+        }
+        @media (hover: hover) {
+            button.pill-btn.quiet:hover { color: var(--primary); border-color: var(--primary); }
+        }
+
+        /* ---- Divider: dashed-brown, 12px rhythm ---- */
+        .swapwrap { display: flex; align-items: center; gap: 14px; margin: 6px 0 10px; }
+        .swapwrap .rule {
+            flex: 1; height: 2px;
+            background: linear-gradient(to right, var(--line) 50%, transparent 50%) center / 12px 2px repeat-x;
+        }
+
+        .meta {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 10px; margin-top: 14px; flex-wrap: wrap;
+        }
+        .rateline { font-size: 0.95rem; font-variant-numeric: tabular-nums; color: var(--body); }
+        .rateline strong { color: var(--ink); font-weight: 800; }
+        .rateline .dim { color: var(--muted); }
+        .badges { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+
+        /* ---- Tag: soft pills ---- */
+        .badge, .pill {
+            display: inline-flex; align-items: center; gap: 4px;
+            height: 28px; padding: 0 12px;
+            border-radius: 999px; border: 1.5px solid transparent;
+            font-size: 0.78rem; font-weight: 700; line-height: 1;
+            white-space: nowrap;
+            background: var(--tag); color: var(--tag-ink);
+            transition: all 0.2s var(--ease);
+        }
+        .badge.manual { background: var(--manual); color: var(--manual-ink); }
+        .badge.stale, .badge.none { background: var(--warn); color: var(--warn-ink); }
+        .pill { background: var(--off); color: var(--off-ink); }
+        .pill .ico { width: 18px; height: 18px; }
+
+        /* ---- Collapse ---- */
+        details {
+            margin-top: 18px;
+            border: 2px solid var(--line);
+            border-radius: 18px;
+        }
+        summary {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 16px;
+            cursor: pointer; list-style: none;
+            font-size: 0.95rem; font-weight: 700; color: var(--body);
+            border-radius: 16px;
+        }
+        summary::-webkit-details-marker { display: none; }
+        summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+        summary .knob {
+            width: 26px; height: 26px; flex: none; border-radius: 50%;
+            display: grid; place-items: center;
+            background: var(--primary); color: #fff;
+            box-shadow: 0 2px 4px rgba(25, 200, 185, 0.3);
+            transition: transform 0.3s var(--ease);
+        }
+        summary .knob .ico { width: 18px; height: 18px; stroke-width: 5; }
+        details[open] summary .knob { transform: rotate(180deg); }
+        .collapse-body { padding: 2px 16px 16px; }
+
+        .manualbox { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        .manualbox input {
+            flex: 1 1 140px; min-width: 0; height: 45px;
+            background: var(--field); border: none; border-radius: 50px;
+            padding: 0 18px; font: inherit; font-weight: 600;
+            font-variant-numeric: tabular-nums; color: var(--ink);
+            transition: box-shadow 0.2s var(--ease);
+        }
+        .manualbox input::placeholder { color: var(--placeholder); font-weight: 400; }
+        .manualbox input:hover { box-shadow: 0 3px 0 0 var(--line); }
+        .manualbox input:focus { outline: none;
+            box-shadow: var(--focus-ring); }
+        .hint { font-size: 0.82rem; color: var(--muted); margin-top: 12px; }
+
+        /* ---- Currency sheet: Drawer (bottom on phones) ---- */
         dialog#sheet {
-            border: none; padding: 0; color: var(--ink);
-            background: var(--card-solid);
+            border: none; padding: 0; color: var(--body);
+            background: var(--card);
             width: min(440px, 100%);
             max-width: 100%;
-            box-shadow: var(--shadow);
+            box-shadow: var(--panel-shadow);
+            font-family: var(--font);
         }
-        dialog#sheet::backdrop { background: rgba(8,9,14,0.55); backdrop-filter: blur(3px); }
+        dialog#sheet::backdrop { background: var(--mask); }
+        dialog#sheet[open] { animation: slide-up 0.3s var(--ease) both; }
+        dialog#sheet[open]::backdrop { animation: fade-in 0.25s var(--ease); }
+        @keyframes slide-up { from { transform: translateY(100%); } }
+        @keyframes fade-in { from { opacity: 0; } }
         @media (max-width: 560px) {
-            /* bottom sheet on phones: thumb-reachable, keyboard pushes it up */
             dialog#sheet {
-                margin: 0 0 0 0; top: auto; bottom: 0;
+                margin: 0; top: auto; bottom: 0;
                 max-height: 88dvh; height: 88dvh;
                 border-radius: 20px 20px 0 0;
             }
         }
         @media (min-width: 561px) {
-            dialog#sheet { margin: auto; border-radius: 18px; max-height: 78vh; }
+            dialog#sheet { margin: auto; border-radius: 24px; max-height: 78vh; }
+            dialog#sheet[open] { animation: pop-in 0.25s var(--ease) both; }
+            @keyframes pop-in { from { transform: translateY(12px) scale(0.97); opacity: 0; } }
         }
         dialog#sheet[open] { display: flex; flex-direction: column; }
+        @media (prefers-reduced-motion: reduce) {
+            dialog#sheet[open], dialog#sheet[open]::backdrop { animation: none; }
+        }
 
         .sheet-head {
             display: flex; align-items: center; gap: 10px;
-            padding: 14px 16px; border-bottom: 1px solid var(--line);
+            padding: 16px 16px 12px;
             flex: none;
         }
-        .sheet-head .ico { width: 18px; height: 18px; color: var(--muted); }
-        .sheet-head input {
+        .search {
+            flex: 1 1 auto; min-width: 0;
+            display: flex; align-items: center; gap: 8px;
+            height: 45px; padding: 0 16px;
+            background: var(--field); border-radius: 50px;
+            transition: box-shadow 0.2s var(--ease);
+        }
+        .search:focus-within { box-shadow: var(--focus-ring); }
+        .search .ico { width: 20px; height: 20px; color: var(--muted); }
+        .search input {
             flex: 1 1 auto; min-width: 0;
             background: transparent; border: none; outline: none;
-            font: inherit; font-size: 1.05rem; color: var(--ink);
+            font: inherit; font-size: 1rem; font-weight: 600; color: var(--ink);
         }
-        .linkbtn {
-            background: none; border: none; padding: 4px;
-            font: inherit; font-weight: 600; color: var(--accent); cursor: pointer;
+        .search input::placeholder { color: var(--placeholder); font-weight: 400; }
+        .closebtn {
+            width: 40px; height: 40px; flex: none; border-radius: 50%;
+            display: grid; place-items: center;
+            background: none; border: none; color: var(--ink); cursor: pointer;
+            transition: background 0.2s var(--ease);
+        }
+        .closebtn .ico { width: 30px; height: 30px; }
+        @media (hover: hover) { .closebtn:hover { background: rgba(114, 93, 66, 0.1); } }
+
+        .sheet-rule {
+            flex: none; height: 2px; margin: 0 16px;
+            background: linear-gradient(to right, var(--line) 50%, transparent 50%) center / 12px 2px repeat-x;
         }
 
         #sheet-list {
-            list-style: none; margin: 0; padding: 6px 0;
+            list-style: none; margin: 0; padding: 6px 10px 16px;
             overflow-y: auto; -webkit-overflow-scrolling: touch;
             flex: 1 1 auto;
         }
+        #sheet-list:focus { outline: none; }
         #sheet-list .group {
-            padding: 10px 16px 4px; font-size: 0.72rem; font-weight: 700;
-            letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
+            padding: 12px 10px 6px; font-size: 0.74rem; font-weight: 800;
+            letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
         }
         #sheet-list li[role="option"] {
-            display: flex; align-items: baseline; gap: 10px;
-            padding: 11px 16px; cursor: pointer;
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 12px; margin: 2px 0;
+            border-radius: 16px; cursor: pointer;
+            transition: background 0.15s var(--ease);
         }
-        #sheet-list li .code { font-weight: 700; width: 3.4em; flex: none; }
+        #sheet-list li .code {
+            font-weight: 800; color: var(--ink);
+            min-width: 3.6em; height: 28px; padding: 0 10px; flex: none;
+            display: inline-grid; place-items: center;
+            background: var(--tag); border-radius: 999px; font-size: 0.85rem;
+        }
         #sheet-list li .nm { flex: 1 1 auto; min-width: 0; overflow: hidden;
                              text-overflow: ellipsis; white-space: nowrap; }
-        #sheet-list li .sym { color: var(--muted); font-size: 0.85rem; }
-        #sheet-list li[aria-selected="true"] .code { color: var(--accent); }
+        #sheet-list li .sym { color: var(--muted); font-size: 0.85rem; font-weight: 700; }
+        #sheet-list li[aria-selected="true"] .code { background: var(--primary); color: #0f3d2e; }
         #sheet-list li.active { background: var(--field); }
-        #sheet-list mark { background: none; color: var(--accent); font-weight: 700; }
-        #sheet-empty { padding: 20px 16px; }
+        @media (hover: hover) { #sheet-list li[role="option"]:hover { background: var(--field); } }
+        #sheet-list mark { background: none; color: var(--primary-active); font-weight: 800; }
+        @media (prefers-color-scheme: dark) { #sheet-list mark { color: var(--primary); } }
+        #sheet-list li[aria-selected="true"] mark { color: inherit; }
+        #sheet-empty { padding: 20px 26px; }
 
-        .swapwrap { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
-        .swapwrap hr { flex: 1; border: none; border-top: 1px solid var(--line); }
-        button.icon {
-            background: var(--field); color: var(--ink);
-            border: 1px solid var(--line); border-radius: 999px;
-            width: 38px; height: 38px; flex: 0 0 38px;
-            font-size: 1.05rem; cursor: pointer;
-            display: grid; place-items: center;
-            transition: transform .15s ease;
-        }
-        button.icon:active { transform: scale(0.92); }
-        button.icon:disabled { opacity: 0.5; }
-
-        .meta {
-            display: flex; align-items: center; justify-content: space-between;
-            gap: 10px; margin-top: 16px; flex-wrap: wrap;
-        }
-        .rateline { font-size: 0.95rem; font-variant-numeric: tabular-nums; }
-        .rateline .dim { color: var(--muted); }
-        .badges { display: flex; align-items: center; gap: 8px; margin-left: auto; }
-
-        .badge {
-            font-size: 0.75rem; font-weight: 600;
-            padding: 3px 9px; border-radius: 999px;
-            background: var(--field); color: var(--muted);
-            white-space: nowrap;
-        }
-        .badge.manual { background: var(--manual-soft); color: var(--manual); }
-        .badge.stale  { background: var(--warn-soft); color: var(--warn); }
-        .badge.none   { background: var(--warn-soft); color: var(--warn); }
-
-        .pill {
-            font-size: 0.72rem; font-weight: 700; letter-spacing: 0.03em;
-            text-transform: uppercase;
-            padding: 3px 9px; border-radius: 999px;
-            background: rgba(240,68,90,0.14); color: var(--off);
-        }
-
-        details { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
-        summary {
-            cursor: pointer; font-size: 0.9rem; color: var(--muted);
-            font-weight: 600; list-style: none;
-        }
-        summary::-webkit-details-marker { display: none; }
-        summary { display: flex; align-items: center; gap: 7px; }
-        summary .ico { transition: transform .15s ease; }
-        details[open] summary .ico { transform: rotate(90deg); }
-        .manualbox { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-        .manualbox input {
-            flex: 1 1 120px; min-width: 0;
-            background: var(--field); border: 1px solid transparent; border-radius: 12px;
-            padding: 10px 12px; font: inherit; font-variant-numeric: tabular-nums; color: var(--ink);
-        }
-        .manualbox input:focus { outline: none; border-color: var(--accent); }
-        button.text {
-            background: var(--accent); color: var(--accent-ink);
-            border: none; border-radius: 12px; padding: 10px 14px;
-            font: inherit; font-weight: 650; cursor: pointer;
-        }
-        button.text.ghost { background: var(--field); color: var(--muted); }
-        .hint { font-size: 0.8rem; color: var(--muted); margin-top: 10px; }
-
+        /* ---- Update notice ---- */
         .banner {
-            position: fixed; left: 16px; right: 16px; bottom: 16px;
+            position: fixed; left: 16px; right: 16px; bottom: 20px;
             max-width: 408px; margin: 0 auto;
-            background: var(--card-solid); border: 1px solid var(--line);
-            border-radius: 14px; box-shadow: var(--shadow);
-            padding: 12px 14px;
+            background: var(--field);
+            border: 2px solid var(--line);
+            border-radius: 24px;
+            box-shadow: var(--shadow-base);
+            padding: 10px 10px 10px 20px;
             display: flex; align-items: center; gap: 12px;
-            font-size: 0.9rem;
+            font-size: 0.92rem; font-weight: 700; color: var(--ink);
         }
+        .banner button { margin-left: auto; }
 
-        /* Icons: lucide (ISC), inlined as a sprite so the page stays self-contained.
-           Stroke presentation attributes inherit through <use>, so currentColor works. */
+        /* Icons: naive-icons (MIT), inlined as a sprite so the page stays self-contained.
+           Their #2A2A2A outline is mapped to currentColor so it follows the brown ink. */
         .ico {
             width: 1em; height: 1em; flex: none;
             fill: none; stroke: currentColor;
-            stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+            stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round;
         }
-        h1 .ico { width: 1.15em; height: 1.15em; color: var(--accent); stroke-width: 2.4; }
-        button.icon .ico { width: 17px; height: 17px; }
-        .pill .ico { width: 12px; height: 12px; stroke-width: 2.4; }
-        .pill { display: inline-flex; align-items: center; gap: 5px; }
 
-        .banner button { margin-left: auto; }
         .hidden { display: none !important; }
-        footer { text-align: center; color: var(--muted); font-size: 0.78rem; margin-top: 18px; }
-        footer a { color: inherit; }
+        footer { text-align: center; color: var(--muted); font-size: 0.8rem; font-weight: 600; margin-top: 22px; }
+        footer a { color: inherit; text-decoration-color: var(--line); text-underline-offset: 3px; }
     </style>
 </head>
 <body>
     <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
-        <!-- lucide v1.38.0 icons (ISC) — see README -->
-        <symbol id="i-exchange" viewBox="0 0 24 24"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></symbol>
-        <symbol id="i-swap" viewBox="0 0 24 24"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></symbol>
-        <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
-        <symbol id="i-offline" viewBox="0 0 24 24"><path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><path d="M5 12.859a10 10 0 0 1 5.17-2.69"/><path d="M19 12.859a10 10 0 0 0-2.007-1.523"/><path d="M2 8.82a15 15 0 0 1 4.177-2.643"/><path d="M22 8.82a15 15 0 0 0-11.288-3.764"/><path d="m2 2 20 20"/></symbol>
-        <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
-        <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
-        <symbol id="i-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></symbol>
+        <!-- naive-icons v1.3.0 (MIT) — see README -->
+        <!-- bell bag: our own drawing in the naive-icons style (no such icon in the set) -->
+        <symbol id="n-bellbag" viewBox="0 0 48 48"><g stroke-width="2.6"><path d="M18.5 22 C 16.5 15 18 7 24.5 5.2 C 29 4 32.5 6.5 31.5 10 C 35.5 10 38 14 35.5 17.5 C 33.5 20 31.5 20.5 30.5 22 Z" fill="#F7BC7A"/><path d="M31.5 10 C 30.5 12.5 30.5 15 32 17" stroke="#E9A25E" stroke-width="2.2"/><path d="M17 21 C 8.5 25 5 33.5 8 39.5 C 11 45 19 46 25 45.5 C 32 45 39.5 42.5 40.5 36 C 41.5 29.5 37.5 24 32 21 Z" fill="#F7BC7A"/><path d="M38 31 C 38.5 37 35 41.5 28 43" stroke="#E9A25E" stroke-width="3" fill="none"/><path d="M16.5 21.8 C 21.5 19.6 27 19.2 32.5 20.6" stroke="#D63B2F" stroke-width="3.4"/><path d="M31.5 20.6 L 36 27.5" stroke="#D63B2F" stroke-width="3"/><path d="M18.0 25.3 L 20.8 29.5 L 25.9 28.8 L 22.8 32.8 L 25.0 37.5 L 20.2 35.7 L 16.5 39.3 L 16.6 34.1 L 12.1 31.7 L 17.0 30.3 Z" fill="currentColor" stroke-width="1.6"/></g></symbol>
+        <symbol id="n-arrow-up" viewBox="0 0 48 48"><path d="M24 39 L24 18" stroke="currentColor" stroke-width="4"/><path d="M15 22 L24 8 L33 22 Z" fill="#E76F51"/></symbol>
+        <symbol id="n-arrow-down" viewBox="0 0 48 48"><path d="M24 9 L24 30" stroke="currentColor" stroke-width="4"/><path d="M15 26 L24 40 L33 26 Z" fill="#E76F51"/></symbol>
+        <symbol id="n-refresh" viewBox="0 0 48 48"><path d="M37 16 A 14.5 14.5 0 1 0 38.5 24" stroke="#2A9D8F" stroke-width="3.5" fill="none"/><path d="M30 10 L 39 11 L 35 19 Z" fill="#E76F51"/></symbol>
+        <symbol id="n-chevron-down" viewBox="0 0 48 48"><path d="M12 19 L 24 31 L 36 19" fill="none" stroke="currentColor" stroke-width="3.5"/></symbol>
+        <symbol id="n-search" viewBox="0 0 48 48"><circle cx="20" cy="20" r="12" fill="#2A9D8F"/><circle cx="20" cy="20" r="6" fill="#FFFFFF"/><path d="M30 30 L42 42" stroke="currentColor" stroke-width="4.5"/></symbol>
+        <symbol id="n-cloud" viewBox="0 0 48 48"><path d="M14 30 C 8 30 6 22 12 20 C 12 14 20 12 24 16 C 28 10 38 14 36 22 C 42 22 42 30 36 30 Z" fill="#FAEDCD"/><circle cx="20" cy="24" r="1.5" fill="currentColor"/><circle cx="28" cy="24" r="1.5" fill="currentColor"/></symbol>
+        <symbol id="n-close" viewBox="0 0 48 48"><circle cx="24" cy="24" r="17" fill="#FAEDCD"/><path d="M17 17 L 31 31" stroke="#E76F51" stroke-width="4.5"/><path d="M31 17 L 17 31" stroke="#E76F51" stroke-width="4.5"/></symbol>
     </svg>
 
     <div class="wrap">
         <header>
-            <h1><svg class="ico"><use href="#i-exchange"/></svg> Exchange</h1>
-            <span id="net" class="pill hidden"><svg class="ico"><use href="#i-offline"/></svg>offline</span>
+            <h1 class="ribbon">
+                <i class="back l"></i><i class="back r"></i><i class="fold l"></i><i class="fold r"></i><i class="front"></i>
+                <span class="txt"><svg class="ico" aria-hidden="true"><use href="#n-bellbag"/></svg>Exchange</span>
+            </h1>
+            <span id="net" class="pill hidden"><svg class="ico" aria-hidden="true"><use href="#n-cloud"/></svg>offline</span>
         </header>
 
         <main class="card">
@@ -301,21 +519,21 @@
                 <div class="row">
                     <input id="amount" type="text" inputmode="decimal" autocomplete="off"
                            spellcheck="false" aria-label="Amount" placeholder="0">
-                    <button type="button" class="picker" id="from" aria-haspopup="listbox" aria-label="Convert from"><span class="code"></span><svg class="ico"><use href="#i-chevron-down"/></svg></button>
+                    <button type="button" class="picker" id="from" aria-haspopup="listbox" aria-label="Convert from"><span class="code"></span><svg class="ico" aria-hidden="true"><use href="#n-chevron-down"/></svg></button>
                 </div>
                 <div class="caption" id="from-name"></div>
             </div>
 
             <div class="swapwrap">
-                <hr>
-                <button id="swap" class="icon" type="button" title="Swap currencies" aria-label="Swap currencies"><svg class="ico"><use href="#i-swap"/></svg></button>
-                <hr>
+                <span class="rule"></span>
+                <button id="swap" class="btn-primary round" type="button" title="Swap currencies" aria-label="Swap currencies"><svg class="ico" aria-hidden="true"><use href="#n-arrow-down"/></svg><svg class="ico" aria-hidden="true"><use href="#n-arrow-up"/></svg></button>
+                <span class="rule"></span>
             </div>
 
             <div class="field">
                 <div class="row">
                     <output id="result" class="empty" title="Tap to copy">&mdash;</output>
-                    <button type="button" class="picker" id="to" aria-haspopup="listbox" aria-label="Convert to"><span class="code"></span><svg class="ico"><use href="#i-chevron-down"/></svg></button>
+                    <button type="button" class="picker" id="to" aria-haspopup="listbox" aria-label="Convert to"><span class="code"></span><svg class="ico" aria-hidden="true"><use href="#n-chevron-down"/></svg></button>
                 </div>
                 <div class="caption" id="to-name"></div>
             </div>
@@ -324,44 +542,50 @@
                 <div id="rateline" class="rateline"></div>
                 <div class="badges">
                     <span id="badge" class="badge"></span>
-                    <button id="refresh" class="icon" type="button" title="Refresh rates" aria-label="Refresh rates"><svg class="ico"><use href="#i-refresh"/></svg></button>
+                    <button id="refresh" class="ghost-round" type="button" title="Refresh rates" aria-label="Refresh rates"><svg class="ico" aria-hidden="true"><use href="#n-refresh"/></svg></button>
                 </div>
             </div>
 
             <details id="manual">
-                <summary><svg class="ico"><use href="#i-chevron-right"/></svg>Set rate manually</summary>
-                <div class="manualbox">
-                    <input id="manual-rate" type="text" inputmode="decimal" autocomplete="off"
-                           spellcheck="false" aria-label="Manual rate">
-                    <button id="manual-save" class="text" type="button">Save</button>
-                    <button id="manual-clear" class="text ghost hidden" type="button">Clear</button>
+                <summary><span class="knob"><svg class="ico" aria-hidden="true"><use href="#n-chevron-down"/></svg></span>Set rate manually</summary>
+                <div class="collapse-body">
+                    <div class="manualbox">
+                        <input id="manual-rate" type="text" inputmode="decimal" autocomplete="off"
+                               spellcheck="false" aria-label="Manual rate">
+                        <button id="manual-save" class="btn-primary pill-btn" type="button">Save</button>
+                        <button id="manual-clear" class="pill-btn quiet hidden" type="button">Clear</button>
+                    </div>
+                    <p id="manual-hint" class="hint"></p>
                 </div>
-                <p id="manual-hint" class="hint"></p>
             </details>
         </main>
 
         <footer>
             Rates from <a href="https://frankfurter.dev" target="_blank" rel="noopener">Frankfurter</a>
-            &middot; works offline
+            &middot; works offline<br>
+            Style by <a href="https://github.com/guokaigdg/animal-island-ui" target="_blank" rel="noopener">Animal Island UI</a>
         </footer>
     </div>
 
 
     <dialog id="sheet" aria-label="Choose a currency">
         <div class="sheet-head">
-            <svg class="ico"><use href="#i-search"/></svg>
-            <input id="sheet-q" type="text" role="combobox" aria-expanded="true" aria-controls="sheet-list"
-                   aria-autocomplete="list" autocomplete="off" spellcheck="false" enterkeyhint="go"
-                   placeholder="Search name, code or symbol">
-            <button type="button" id="sheet-close" class="linkbtn">Cancel</button>
+            <label class="search">
+                <svg class="ico" aria-hidden="true"><use href="#n-search"/></svg>
+                <input id="sheet-q" type="text" role="combobox" aria-expanded="true" aria-controls="sheet-list"
+                       aria-autocomplete="list" autocomplete="off" spellcheck="false" enterkeyhint="go"
+                       placeholder="Search name, code or symbol">
+            </label>
+            <button type="button" id="sheet-close" class="closebtn" aria-label="Close"><svg class="ico" aria-hidden="true"><use href="#n-close"/></svg></button>
         </div>
+        <div class="sheet-rule"></div>
         <ul id="sheet-list" role="listbox" tabindex="-1"></ul>
         <p id="sheet-empty" class="hint hidden">No currency matches that.</p>
     </dialog>
 
     <div id="update" class="banner hidden">
         <span>New version available.</span>
-        <button id="reload" class="text" type="button">Reload</button>
+        <button id="reload" class="btn-primary pill-btn" type="button">Reload</button>
     </div>
 
     <script>
