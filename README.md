@@ -73,18 +73,69 @@ a stale rate forever.
 
 Push to `main` → GitHub Actions → Pages.
 
-Bump `CACHE` in `sw.js` when a **non-HTML** asset changes (`icon.svg`, `manifest.json`) —
+Bump `CACHE` in `sw.js` when a **non-HTML** asset changes (`icons/`, `manifest.json`, `fonts/`) —
 those are cache-first. `index.html` is network-first, so it doesn't need a bump. The version
-tracks published deploys, not edits: it stays at `v1` until something actually ships.
+tracks published deploys, not edits: bump it once per shipped change, not per edit.
+
+## Design
+
+The look follows [animal-island-ui](https://github.com/guokaigdg/animal-island-ui) (MIT):
+warm parchment card, earth-brown ink (never black), mint accent, 50px pill controls, yellow
+input focus, 3D "game button" shadow on primary buttons only, swallowtail ribbon title.
+The library is React; this app is not, so the styles are re-implemented in plain CSS from its
+design-system specs rather than imported. Its tokens live on `:root` in `index.html`. The
+library has no dark theme — the dark palette here is our own navy "starry night" variant.
+
+Two deliberate departures from its rules: the currency sheet uses the Drawer look on desktop
+too, not the blob-clipped Modal (a long scrolling list doesn't survive an organic clip-path),
+and the swap/refresh buttons are circles rather than pills.
+
+## Fonts
+
+Nunito (SIL OFL 1.1), latin subset, variable weight — self-hosted in `fonts/` and precached
+by the service worker so the type survives offline.
 
 ## Icons
 
-[Lucide](https://lucide.dev) v1.38.0, ISC licensed — `arrow-right-left`, `arrow-up-down`,
-`refresh-cw`, `wifi-off`, `chevron-down`, `chevron-right`. The paths are inlined as an SVG
-sprite in `index.html` rather than loaded from a CDN, so the page stays self-contained and
-works offline. They inherit `currentColor`, so both themes are covered by one copy.
+[naive-icons](https://github.com/guokaigdg/naive-icons) v1.3.0, MIT licensed —
+`arrow-up`, `arrow-down`, `refresh`, `chevron-down`, `search`, `cloud`, `close`. The SVGs are
+inlined as a sprite in `index.html` rather than loaded from a CDN, so the page stays
+self-contained and works offline. Their `#2A2A2A` outline is swapped for `currentColor` so it
+follows the theme's ink; the accent fills are kept.
 
-> ISC License. Copyright (c) 2026 Lucide Icons and Contributors.
-> Permission to use, copy, modify, and/or distribute this software for any purpose with or
-> without fee is hereby granted, provided that the above copyright notice and this permission
-> notice appear in all copies.
+App icons live in `icons/`: `icon.svg` (favicon + manifest "any"), `icon-maskable.svg`
+(full-bleed, art inside the 80% safe zone), and PNGs rendered from those two —
+`favicon-32`, `apple-touch-icon` (180, iOS ignores SVG), `icon-192`/`icon-512` and
+`icon-maskable-512` for Android installs. Re-render the PNGs whenever the SVGs change.
+
+The bell bag in the title and app icon is our own drawing in the same style (the set has no
+such icon) — a nod to the island-life games, not a copy of their artwork.
+
+## Credits & licenses
+
+- **animal-island-ui** — visual language (tokens, shapes, component specs), re-implemented in CSS.
+  Copyright (c) 2026 guokaigdg. MIT License.
+- **naive-icons** — the inlined icon sprite (outline colour adjusted).
+  Copyright (c) 2026 Naive Icons. MIT License.
+- **Nunito** — `fonts/nunito-latin-wght.woff2`.
+  Copyright 2014 The Nunito Project Authors (https://github.com/googlefonts/nunito).
+  SIL Open Font License 1.1 — https://openfontlicense.org
+
+Both MIT-licensed works above are used under these terms:
+
+> Permission is hereby granted, free of charge, to any person obtaining a copy of this software
+> and associated documentation files (the "Software"), to deal in the Software without
+> restriction, including without limitation the rights to use, copy, modify, merge, publish,
+> distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the
+> Software is furnished to do so, subject to the following conditions:
+>
+> The above copyright notice and this permission notice shall be included in all copies or
+> substantial portions of the Software.
+>
+> THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+> BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+> NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+> DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+> OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+The bell bag and the dark "starry night" palette are original to this project.
